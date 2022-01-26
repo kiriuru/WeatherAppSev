@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.IBinder
 import android.provider.Settings
+import android.telecom.TelecomManager.EXTRA_LOCATION
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -30,10 +31,11 @@ import com.google.android.gms.tasks.Task
 import com.google.android.material.snackbar.Snackbar
 import com.kiriuru.weatherappsev.App
 import com.kiriuru.weatherappsev.BuildConfig
-import com.kiriuru.weatherappsev.currentWeather.data.ForegroundLocationService
-import com.kiriuru.weatherappsev.currentWeather.data.ForegroundLocationService.Companion.ACTION_FOREGROUND_ONLY_LOCATION_BROADCAST
+import com.kiriuru.weatherappsev.currentWeather.data.LocationService
 import com.kiriuru.weatherappsev.currentWeather.data.model.WeatherResponse
 import com.kiriuru.weatherappsev.databinding.FragmentWeatherBinding
+import com.kiriuru.weatherappsev.utils.hasPermission
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -45,22 +47,22 @@ class WeatherFragment : Fragment() {
     }
 
     private var foregroundLocationServiceBound = false
-    private var foregroundLocationService: ForegroundLocationService? = null
+    private var locationService: LocationService? = null
 
-    private lateinit var foregroundBroadcastReceiver: ForegroundBroadcastReceiver
-
-    private val foregroundServiceConnection = object : ServiceConnection {
-        override fun onServiceConnected(p0: ComponentName?, service: IBinder?) {
-            val binder = service as ForegroundLocationService.LocalBinder
-            foregroundLocationService = binder.service
-            foregroundLocationServiceBound = true
-        }
-
-        override fun onServiceDisconnected(p0: ComponentName?) {
-            foregroundLocationService = null
-            foregroundLocationServiceBound = false
-        }
-    }
+//    private lateinit var foregroundBroadcastReceiver: ForegroundBroadcastReceiver
+//
+//    private val foregroundServiceConnection = object : ServiceConnection {
+//        override fun onServiceConnected(p0: ComponentName?, service: IBinder?) {
+//            val binder = service as LocationService.LocalBinder
+//            locationService = binder.service
+//            foregroundLocationServiceBound = true
+//        }
+//
+//        override fun onServiceDisconnected(p0: ComponentName?) {
+//            locationService = null
+//            foregroundLocationServiceBound = false
+//        }
+//    }
 
 
     @Inject
@@ -84,7 +86,7 @@ class WeatherFragment : Fragment() {
         super.onCreate(savedInstanceState)
         fusedLocationProviderClient =
             LocationServices.getFusedLocationProviderClient(requireContext())
-        foregroundBroadcastReceiver = ForegroundBroadcastReceiver()
+//        foregroundBroadcastReceiver = ForegroundBroadcastReceiver()
 
     }
 
@@ -111,7 +113,30 @@ class WeatherFragment : Fragment() {
         if (permissionApproved()) {
             showToast("approved")
 
-            getLocation()
+//            updateService(viewModel.receivingLocationUpdates.value)
+            lifecycleScope.launch {
+                viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    viewModel.receivingLocationUpdates.collect {
+                        updateService(it)
+                        showToast("update Service")
+                    }
+                }
+            }
+            lifecycleScope.launch {
+                viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    viewModel.locationData.collect {
+                        showToast("get loc data ${it.toString()}")
+                        if (it != null) {
+                            latitude = it.latitude
+                            longityde = it.longitude
+                            viewModel.setData("${it.latitude},${it.longitude}")
+                        } else {
+                            getLocation()
+                        }
+//                        delay(10000)
+                    }
+                }
+            }
         } else {
             showToast("Not Approved")
             requestPermissions()
@@ -145,7 +170,7 @@ class WeatherFragment : Fragment() {
 
     @SuppressLint("MissingPermission")
     fun getLocation() {
-
+        showToast("Alter get loc")
         val currentLocation: Task<Location> =
             fusedLocationProviderClient.getCurrentLocation(
                 PRIORITY_HIGH_ACCURACY,
@@ -241,33 +266,33 @@ class WeatherFragment : Fragment() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        val serviceIntent = Intent(requireContext(), ForegroundLocationService::class.java)
-        activity?.bindService(serviceIntent, foregroundServiceConnection, Context.BIND_AUTO_CREATE)
+
+    private fun updateService(receive: Boolean) {
+        if (receive) {
+            showToast("stop service $receive")
+            viewModel.stopLocationUpdates()
+        } else {
+            showToast("Start service $receive")
+            viewModel.startLocationUpdates()
+
+        }
     }
 
-    override fun onResume() {
-        super.onResume()
 
-        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(
-            foregroundBroadcastReceiver,
-            IntentFilter(ACTION_FOREGROUND_ONLY_LOCATION_BROADCAST)
-        )
-    }
 
     override fun onPause() {
-        LocalBroadcastManager.getInstance(requireContext())
-            .unregisterReceiver(foregroundBroadcastReceiver)
+        if ((viewModel.receivingLocationUpdates.value==true) && !requireContext().hasPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
+            viewModel.stopLocationUpdates()
+        }
+        viewModel.stopLocationUpdates()
+
         super.onPause()
     }
 
     override fun onStop() {
         cancellationTokenSource.cancel()
-        if (foregroundLocationServiceBound) {
-            activity?.unbindService(foregroundServiceConnection)
-            foregroundLocationServiceBound = false
-        }
+
+        viewModel.stopLocationUpdates()
         super.onStop()
     }
 
@@ -276,18 +301,5 @@ class WeatherFragment : Fragment() {
         _binding = null
     }
 
-    private inner class ForegroundBroadcastReceiver : BroadcastReceiver() {
-
-        override fun onReceive(context: Context, intent: Intent) {
-            val location = intent.getParcelableExtra<Location>(
-                ForegroundLocationService.EXTRA_LOCATION
-            )
-            if (location != null) {
-                latitude = location.latitude
-                longityde = location.longitude
-                viewModel.setData("${location.latitude}, ${location.longitude}")
-            }
-        }
-    }
 
 }

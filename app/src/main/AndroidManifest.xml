@@ -25,7 +25,7 @@
         </activity>
 
         <service
-            android:name=".currentWeather.data.ForegroundLocationService"
+            android:name=".currentWeather.data.LocationService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="location" />
