@@ -1,6 +1,6 @@
 package com.kiriuru.weatherappsev.currentWeather.data.api
 
-import com.kiriuru.weatherappsev.currentWeather.model.WeatherResponse
+import com.kiriuru.weatherappsev.currentWeather.data.model.WeatherResponse
 import com.kiriuru.weatherappsev.utils.Const
 import retrofit2.http.GET
 import retrofit2.http.Query

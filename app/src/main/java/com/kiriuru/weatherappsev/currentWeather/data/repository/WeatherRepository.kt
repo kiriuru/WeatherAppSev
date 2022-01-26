@@ -1,7 +1,7 @@
 package com.kiriuru.weatherappsev.currentWeather.data.repository
 
 import com.kiriuru.weatherappsev.currentWeather.data.api.WeatherApi
-import com.kiriuru.weatherappsev.currentWeather.model.WeatherResponse
+import com.kiriuru.weatherappsev.currentWeather.data.model.WeatherResponse
 import javax.inject.Inject
 
 interface WeatherRepository {
