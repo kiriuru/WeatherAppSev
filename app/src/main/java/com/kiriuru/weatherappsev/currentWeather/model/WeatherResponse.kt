@@ -1,4 +1,4 @@
-package com.kiriuru.weatherappsev.model
+package com.kiriuru.weatherappsev.currentWeather.model
 
 import com.google.gson.annotations.SerializedName
 
