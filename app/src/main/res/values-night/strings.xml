@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="push">push</string>
+    <string name="feels_temp_text">По ощущениям</string>
+    <string name="wind_speed_text">Скорость ветра</string>
+</resources>
