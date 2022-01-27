@@ -4,4 +4,5 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="feels_temp_text">По ощущениям</string>
     <string name="push">push</string>
+    <string name="wind_speed_text">Скорость ветра</string>
 </resources>
